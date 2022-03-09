@@ -21,10 +21,9 @@ const pool = new Pool({
 //   })
 //   .catch((err) => console.error("query error", err.stack));
 
-// Dyanmic query parameters
-// let input = process.argv.slice(2);
-// let cohortName = input[0];
-// let max = input[1];
+// // Dyanmic query parameters
+// const cohortName = process.argv[2];
+// const limit = process.argv[3] || 5;
 
 // pool
 //   .query(
@@ -33,7 +32,7 @@ const pool = new Pool({
 // FROM students
 // JOIN cohorts ON students.cohort_id = cohorts.id
 // WHERE cohorts.name LIKE '%${cohortName}%'
-// LIMIT ${max || 5};
+// LIMIT ${limit || 5};
 // `
 //   )
 //   .then((res) => {
@@ -44,21 +43,23 @@ const pool = new Pool({
 //     });
 //   });
 
-// Name of teachers that assisted (4_queries #12)
-pool
-  .query(
-    `
-SELECT DISTINCT teachers.name AS teacher, cohorts.name AS cohort 
-FROM teachers
-JOIN assistance_requests ON teachers.id = assistance_requests.teacher_id
-JOIN students ON assistance_requests.student_id = students.id
-JOIN cohorts ON students.cohort_id = cohorts.id
-WHERE cohorts.name LIKE '%${process.argv[2] || "JUL02"}%'
-ORDER BY teachers.name;
-`
-  )
-  .then((res) => {
-    res.rows.forEach((user) => {
-      console.log(`${user.cohort}: ${user.teacher}`);
-    });
+// Dyanmic query parameters - prevent sql injections
+const queryString = `
+SELECT students.id as student_id, students.name as name, cohorts.name as cohort
+FROM students
+JOIN cohorts ON cohorts.id = cohort_id
+WHERE cohorts.name LIKE $1
+LIMIT $2;
+`;
+
+const cohortName = process.argv[2];
+const limit = process.argv[3] || 5;
+const values = [`%${cohortName}%`, limit];
+
+pool.query(queryString, values).then((res) => {
+  res.rows.forEach((user) => {
+    console.log(
+      `${user.name} has an id of ${user.student_id} and was in the ${user.cohort} cohort`
+    );
   });
+});
